@@ -1,0 +1,31 @@
+import app.cash.sqldelight.dialect.api.PrimitiveType.BOOLEAN;
+import kotlin.Boolean;
+import kotlin.Float;
+import kotlin.Pair;
+import kotlin.String;
+import kotlin.collections.List;
+
+CREATE TABLE artifact (
+    id INTEGER NOT NULL PRIMARY KEY,
+    setKey TEXT NOT NULL,
+    slotKey TEXT NOT NULL,
+    location TEXT NOT NULL DEFAULT 0,
+    lock INTEGER AS Boolean DEFAULT 0,
+    main_stat_key TEXT NOT NULL,
+    rarity INTEGER NOT NULL,
+    substats TEXT AS List<Pair<String, Float>> DEFAULT ""
+);
+
+insert:
+INSERT OR REPLACE INTO artifact(id, setKey, slotKey, location, lock, main_stat_key, rarity, substats)
+VALUES (?, ?, ?, ?, ?, ? ,? , ?);
+
+insertObject:
+INSERT OR REPLACE INTO artifact(id, setKey, slotKey, location, lock, main_stat_key, rarity, substats)
+VALUES ?;
+
+selectAll:
+SELECT * FROM artifact;
+
+selectById:
+SELECT * FROM artifact WHERE id = ?;

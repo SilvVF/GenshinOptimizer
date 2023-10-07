@@ -1,0 +1,41 @@
+import kotlin.Boolean;
+import kotlin.String;
+import kotlin.collections.List;
+
+CREATE TABLE character (
+    id TEXT NOT NULL PRIMARY KEY,
+    key TEXT NOT NULL,
+    ascension INTEGER NOT NULL DEFAULT 0,
+    compare_data INTEGER AS Boolean DEFAULT 0,
+    constellation INTEGER NOT NULL DEFAULT 0,
+    hitMode TEXT NOT NULL DEFAULT "",
+    infusionAura TEXT NOT NULL DEFAULT "",
+    level INTEGER NOT NULL DEFAULT 0,
+    talent_auto_lvl INTEGER NOT NULL DEFAULT 0,
+    talent_burst_lvl INTEGER NOT NULL DEFAULT 0,
+    talent_skill_lvl INTEGER NOT NULL DEFAULT 0,
+    team TEXT AS List<String> NOT NULL
+);
+
+insert:
+INSERT OR REPLACE INTO character(
+    id, key, ascension, compare_data,
+    constellation, hitMode, infusionAura, level,
+    talent_auto_lvl, talent_burst_lvl, talent_skill_lvl, team
+) VALUES (?, ?, ?, ?,
+?, ?, ?, ? ,
+ ?, ?, ?, ?
+);
+
+insertObject:
+INSERT OR REPLACE INTO character(
+    id, key, ascension, compare_data,
+    constellation, hitMode, infusionAura, level,
+    talent_auto_lvl, talent_burst_lvl, talent_skill_lvl, team
+) VALUES ?;
+
+selectAll:
+SELECT * FROM character;
+
+selectById:
+SELECT * FROM character WHERE id = ?;

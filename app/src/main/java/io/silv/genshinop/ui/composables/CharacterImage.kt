@@ -18,6 +18,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.silv.genshinop.R
+import io.silv.genshinop.testCharacterKeys
 import io.silv.genshinop.ui.theme.GenshinopTheme
 
 @Composable
@@ -53,14 +54,7 @@ private fun CharacterImagePreview() {
     GenshinopTheme {
         LazyColumn {
           items(
-              listOf(
-                  "barbara", "faruzan", "thoma", "kukishinobu", "shikanoinheizou", "sucrose",
-                  "noelle", "bennett", "mika", "xingqiu", "lisa", "lynette", "yanfei", "beidou",
-                  "razor", "rosaria", "kamisatoayaka", "qiqi", "diona", "kaedeharakazuha", "yelan",
-                  "layla", "ganyu", "keqing", "sayu", "travelerhydro", "ningguang", "xiangling", "kirara",
-                  "collei", "chongyun", "sangonomiyakokomi", "dori", "aloy", "kujousara", "kaeya", "amber",
-                  "hutao", "candace", "diluc", "mona", "yunjin", "gorou", "raidenshogun", "xinyan"
-              )
+              testCharacterKeys
           ) {
               Column {
                   Text(text = it)

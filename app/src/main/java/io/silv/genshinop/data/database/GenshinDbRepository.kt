@@ -27,7 +27,7 @@ class GenshinDbRepository(
                 }
                 Log.d("Chars",
                     genshinData.characters
-                        .map(::toDbCharacter).map { "\"${it.key.lowercase()}\"" }.toString()
+                        .map(::toDbCharacter).map { "\"${it.key}\"" }.toString()
                 )
             }
             launch {

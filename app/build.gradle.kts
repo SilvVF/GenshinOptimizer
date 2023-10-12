@@ -85,6 +85,8 @@ dependencies {
     implementation("io.insert-koin:koin-android:3.5.0")
     implementation("io.insert-koin:koin-androidx-compose:3.5.0")
 
+    implementation("androidx.compose.material:material-icons-extended:1.4.3")
+
     // kotlin collections fast
     implementation("androidx.compose.ui:ui-util")
 }

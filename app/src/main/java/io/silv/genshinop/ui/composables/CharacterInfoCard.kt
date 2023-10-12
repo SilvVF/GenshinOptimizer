@@ -8,14 +8,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -34,10 +38,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
@@ -53,6 +60,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEach
+import genshin.Artifact
 import genshin.Character
 import io.silv.genshinop.testCharacterKeys
 import io.silv.genshinop.ui.composables.CharCardSizingType.*
@@ -75,6 +84,7 @@ fun CharacterInfoCard(
     modifier: Modifier,
     onClick: () -> Unit,
     character: Character,
+    artifacts: List<Artifact>,
     sizing: CharCardSizingType = Compact
 ) {
     when (sizing) {
@@ -93,6 +103,7 @@ fun CharacterInfoCard(
         Full -> FullCharCard(
             modifier = modifier,
             character = character,
+            artifacts = artifacts,
             onClick = onClick
         )
         List -> ListCharCard(
@@ -110,7 +121,7 @@ fun ListCharCard(
     onClick: () -> Unit
 ) {
 
-    val elementColor = character.elementColor()
+    val elementColor by character.elementColor()
 
     Row(modifier.clickable { onClick() }) {
         Box(
@@ -131,6 +142,13 @@ fun ListCharCard(
                     .fillMaxSize()
                     .align(Alignment.BottomCenter),
             )
+            ConstellationNumber(
+                elementColor = elementColor,
+                constellation = character.constellation,
+                modifier = Modifier
+                    .align(Alignment.BottomStart),
+                shape = RoundedCornerShape(topEndPercent = 12)
+            )
         }
         Column(
             modifier = Modifier
@@ -142,13 +160,14 @@ fun ListCharCard(
         ) {
             TextWithElementBg(
                 character = character,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                elementColor = elementColor
             )
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Stars(amount = character.starCount(), modifier.fillMaxHeight())
+                Stars(amount = character.starCount().value, modifier.fillMaxHeight())
             }
         }
-        Gap(width = 4.dp)
+        Spacer(Modifier.width(4.dp))
         Row(
             Modifier
                 .weight(1f)
@@ -183,10 +202,12 @@ fun ListCharCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FullCharCard(
     modifier: Modifier = Modifier,
     character: Character,
+    artifacts: List<Artifact>,
     onClick: () -> Unit
 ) {
     Card(
@@ -200,13 +221,55 @@ fun FullCharCard(
         CardHeaderWithInfo(
             character = character
         )
-        Text(text = "d")
-        Text(text = "d")
-        Text(text = "d")
-        Text(text = "d")
-        Text(text = "d")
-        Text(text = "d")
-        Text(text = "d")
+        FlowRow {
+            artifacts.fastForEach {
+                ArtifactWithInfo(
+                    artifact = it,
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .size(90.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ArtifactWithInfo(
+    artifact: Artifact,
+    modifier: Modifier = Modifier
+) {
+    Card(modifier) {
+        Box(
+            Modifier
+                .aspectRatio(1f)
+                .background(
+                    brush = Brush.linearGradient(
+                        when (artifact.rarity) {
+                            else -> listOf(Color(69,54,53), Color(0xffe6ac54))
+                        }
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            ArtifactImage(
+                setKey = artifact.setKey,
+                slotKey = artifact.slotKey,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .clip(RoundedCornerShape(bottomEndPercent = 12))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(2.dp)
+            ) {
+                Text(
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    text = "+${artifact.level}",
+                )
+            }
+        }
     }
 }
 
@@ -217,6 +280,7 @@ fun CompactCharCard(
     showStars: Boolean,
     onClick: () -> Unit
 ) {
+    val elementColor by character.elementColor()
     Card(
         modifier = modifier,
         onClick = onClick,
@@ -245,12 +309,13 @@ fun CompactCharCard(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (showStars) {
-                    Stars(amount = character.starCount())
+                    Stars(amount = character.starCount().value)
                 }
                 TextWithElementBg(
                     character = character,
                     modifier = Modifier.fillMaxWidth(.85f),
                     style = MaterialTheme.typography.labelSmall,
+                    elementColor = elementColor
                 )
             }
         }
@@ -262,7 +327,7 @@ private fun CardHeaderWithInfo(
     character: Character,
     modifier: Modifier = Modifier,
 ) {
-    val elementColor = character.elementColor()
+    val elementColor by character.elementColor()
 
     Box(
         modifier = modifier
@@ -340,7 +405,7 @@ private fun CardHeaderWithInfo(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Stars(
-                        amount = character.starCount()
+                        amount = character.starCount().value
                     )
                 }
             }
@@ -419,12 +484,13 @@ private fun TalentLevel(
 private fun ConstellationNumber(
     elementColor: Color,
     constellation: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(30)
 ) {
     
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(30))
+            .clip(shape)
             .size(26.dp)
             .background(elementColor)
             .padding(2.dp)
@@ -486,9 +552,9 @@ private fun LevelText(
 private fun TextWithElementBg(
     character: Character,
     modifier: Modifier = Modifier,
-    style: TextStyle = MaterialTheme.typography.titleMedium
+    style: TextStyle = MaterialTheme.typography.titleMedium,
+    elementColor: Color = character.elementColor().value
 ) {
-
     val formatedText = remember(character) {
         StringBuilder().apply {
             character.key.forEachIndexed { i, c ->
@@ -505,7 +571,7 @@ private fun TextWithElementBg(
         modifier = modifier
             .clip(RoundedCornerShape(60))
             .background(
-                color = character.elementColor()
+                color = elementColor
             )
     ) {
         Text(
@@ -588,7 +654,8 @@ private fun CharacterInfoCardPreview() {
                                     talent_burst_lvl = 3L,
                                     talent_skill_lvl = 3L,
                                     team = emptyList()
-                                )
+                                ),
+                                emptyList(),
                             )
                             Divider()
                         }
@@ -616,7 +683,8 @@ private fun CharacterInfoCardPreview() {
                                     talent_burst_lvl = 3L,
                                     talent_skill_lvl = 3L,
                                     team = emptyList()
-                                )
+                                ),
+                                emptyList()
                             )
                             Divider()
                         }
@@ -629,25 +697,23 @@ private fun CharacterInfoCardPreview() {
 }
 
 @Composable
-private fun Character.elementColor(): Color {
-    return remember(this) {
-        when (key.lowercase()) {
-            "zhongli", "yunjin", "ningguang", "noelle", "gorou", "candace", "albedo", "itto" -> Geo
-            "shenhe", "rosaria", "qiqi", "mika", "layla", "kaeya", "ganyu", "kamisatoayaka", "aloy", "chongyun", "diona", "eula", "freminet" -> Cryo
-            "yaoyao", "tighnari", "nahida", "kirara", "alhatham", "baizhu", "collei", "kaveh" -> Dendro
-            "yoimiya", "xinyan", "xiangling", "thoma", "lyney", "klee", "hutao", "amber", "bennett", "dehya", "diluc", "yanfei" -> Pyro
-            "yelan", "xingqiu", "tartaglia", "nilou", "neuvillette", "mona", "sangonomiyakokomi", "barbara", "ayato" -> Hydro
-            "yae", "raidenshogun", "kukishinobu", "kujousara", "razor", "lisa", "keqing", "beidou", "cyno", "dori", "fischl" -> Electro
-            "xiao", "wanderer", "venti", "sucrose", "sayu", "lynette", "kaedeharakazuha", "shikanoinheizou", "jean", "faruzan" -> Anemo
-            else -> Cryo
-        }
+private fun Character.elementColor(): State<Color> {
+    val color = when (key.lowercase()) {
+        "zhongli", "yunjin", "ningguang", "noelle", "gorou", "candace", "albedo", "itto" -> Geo
+        "shenhe", "rosaria", "qiqi", "mika", "layla", "kaeya", "ganyu", "kamisatoayaka", "aloy", "chongyun", "diona", "eula", "freminet" -> Cryo
+        "yaoyao", "tighnari", "nahida", "kirara", "alhatham", "baizhu", "collei", "kaveh" -> Dendro
+        "yoimiya", "xinyan", "xiangling", "thoma", "lyney", "klee", "hutao", "amber", "bennett", "dehya", "diluc", "yanfei" -> Pyro
+        "yelan", "xingqiu", "tartaglia", "nilou", "neuvillette", "mona", "sangonomiyakokomi", "barbara", "ayato" -> Hydro
+        "yae", "raidenshogun", "kukishinobu", "kujousara", "razor", "lisa", "keqing", "beidou", "cyno", "dori", "fischl" -> Electro
+        "xiao", "wanderer", "venti", "sucrose", "sayu", "lynette", "kaedeharakazuha", "shikanoinheizou", "jean", "faruzan" -> Anemo
+        else -> Cryo
     }
+    return rememberUpdatedState(newValue = color)
 }
 
 @Composable
-private fun Character.starCount(): Int {
-    return remember(this) {
-        when (key.lowercase()) {
+private fun Character.starCount(): State<Int> {
+        val count = when (key.lowercase()) {
             "zhongli", "itto", "shenhe", "qiqi", "lyney", "tartaglia", "neuvillette", "keqing", "jean", "cyno", "xiao", "wanderer", "diluc",
             "yoimiya", "albedo","kamisatoayaka", "ganyu", "aloy","alhatham", "baizhu", "tighnari", "nahida","kaedeharakazuha",
             "venti", "yae", "raidenshogun", "hutao", "ayato","dehya",
@@ -659,5 +725,5 @@ private fun Character.starCount(): Int {
             "sayu", "lynette","shikanoinheizou", "faruzan" -> 4
             else -> 5
         }
-    }
+    return rememberUpdatedState(newValue = count)
 }

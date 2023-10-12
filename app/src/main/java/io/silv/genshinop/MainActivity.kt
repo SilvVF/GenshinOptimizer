@@ -1,92 +1,123 @@
 package io.silv.genshinop
 
+import ExpandableBottomBarState
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.ChecksSdkIntAtLeast
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.More
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Surface
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue.*
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberStandardBottomSheetState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastAny
 import androidx.core.view.WindowCompat
+import genshin.Artifact
+import genshin.Character
 import io.silv.genshinop.data.database.GenshinDbRepository
 import io.silv.genshinop.ui.composables.CharCardSizingType
 import io.silv.genshinop.ui.composables.CharacterInfoCard
-import io.silv.genshinop.ui.composables.FilterTag
-import io.silv.genshinop.ui.composables.Gap
-import io.silv.genshinop.ui.composables.SelectedOption
+import io.silv.genshinop.ui.composables.Element
+import io.silv.genshinop.ui.composables.ElementFilterRow
+import io.silv.genshinop.ui.composables.SearchTopAppBar
 import io.silv.genshinop.ui.composables.SettingsDialog
 import io.silv.genshinop.ui.composables.SettingsDialogThemeChooserRow
+import io.silv.genshinop.ui.composables.element
 import io.silv.genshinop.ui.theme.GenshinopTheme
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.android.inject
+import rememberExpandableBottomBarState
 
+data class CharacterWithArtifacts(
+    val character: Character,
+    val artifacts: List<Artifact>
+)
 
 class MainActivity : ComponentActivity() {
 
     private val dbRepo by inject<GenshinDbRepository>()
     private val json by inject<Json>()
+
+    private val characterWithArtifacts = dbRepo.observeAllCharacters()
+        .combine(dbRepo.observeAllArtifacts()) { characters, artifacts ->
+            characters.map { character ->
+                CharacterWithArtifacts(
+                    character = character,
+                    artifacts = artifacts.filter { it.location == character.id }
+                )
+            }
+        }
 
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,7 +132,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            val characters by dbRepo.observeAllCharacters().collectAsState(initial = emptyList())
+            val allCharacters by characterWithArtifacts.collectAsState(initial = emptyList())
             val weapons by dbRepo.observeAllWeapons().collectAsState(initial = emptyList())
             val artifacts by dbRepo.observeAllArtifacts().collectAsState(initial = emptyList())
 
@@ -122,7 +153,7 @@ class MainActivity : ComponentActivity() {
             }
 
             var gridCells by remember {
-                mutableIntStateOf(4)
+                mutableIntStateOf(1)
             }
 
             val cardType by remember {
@@ -136,26 +167,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val scaffoldState = rememberBottomSheetScaffoldState(
-                bottomSheetState = rememberStandardBottomSheetState(
-                    initialValue = SheetValue.PartiallyExpanded,
-                    skipHiddenState = false
-                )
-            )
 
             val scope = rememberCoroutineScope()
-
-            fun showBottomSheet() {
-                scope.launch {
-                    scaffoldState.bottomSheetState.show()
-                }
-            }
-
-            fun hideBottomSheet() {
-                scope.launch {
-                    scaffoldState.bottomSheetState.hide()
-                }
-            }
 
 
             if (settingsVisible) {
@@ -177,172 +190,128 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = useDynamicColor
             ) {
                 if (displayOptionsVisible) {
-                    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    DisplayOptions(
+                        gridCells = gridCells,
+                        changeCells = { gridCells = it },
+                        onDismiss = {
+                            displayOptionsVisible = false
+                        }
+                    )
+                }
+                var elementFilter by rememberSaveable {
+                    mutableStateOf<Element?>(null)
+                }
 
-                    LaunchedEffect(key1 = Unit) {
-                        sheetState.expand()
-                    }
+                var searching by rememberSaveable {
+                    mutableStateOf(false)
+                }
+                var searchText by rememberSaveable {
+                    mutableStateOf("")
+                }
 
-                    ModalBottomSheet(
-                        onDismissRequest = { displayOptionsVisible = !displayOptionsVisible },
-                        sheetState = sheetState,
-                        dragHandle = {}
-                    ) {
-                        TabRow(
-                            selectedTabIndex = 1,
-                            modifier = Modifier
-                                .padding(12.dp)
-                                .fillMaxWidth(0.3f)
-                        ) {
-                            Tab(
-                                selected = true,
-                                onClick = { /*TODO*/ }
-                            ) {
-                                Text("Display", modifier = Modifier.padding(4.dp))
+                val characters by remember(allCharacters, elementFilter, searchText) {
+                    derivedStateOf {
+                        val elementFiltered = if (elementFilter == null) {
+                            allCharacters
+                        } else {
+                            allCharacters.filter { character ->
+                                character.character.element() == elementFilter
                             }
                         }
-                        Column(
-                            Modifier
-                                .selectableGroup()
-                                .padding(4.dp)
-                                .systemBarsPadding()
-                        ) {
-                            SettingsDialogThemeChooserRow(
-                                text = "List",
-                                selected = gridCells == 4,
-                                onClick = { gridCells = 4 },
-                            )
-                            SettingsDialogThemeChooserRow(
-                                text = "Compact Grid",
-                                selected = gridCells == 3,
-                                onClick = {  gridCells = 3 },
-                            )
-                            SettingsDialogThemeChooserRow(
-                                text = "Comfortable Grid",
-                                selected = gridCells == 2,
-                                onClick = {  gridCells = 2 },
-                            )
-                            SettingsDialogThemeChooserRow(
-                                text = "Full Card",
-                                selected = gridCells == 1,
-                                onClick = {  gridCells = 1 },
-                            )
+                        return@derivedStateOf if (searchText.isNotBlank()) {
+                            elementFiltered.filter { it.character.id.contains(searchText, true) }
+                        } else {
+                            elementFiltered
                         }
                     }
                 }
 
-                BottomSheetScaffold(
-                    scaffoldState = scaffoldState,
+                val bottomBarState = rememberExpandableBottomBarState()
+
+                val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
+                val navBarHeight = 80.dp
+
+                Scaffold(
+                    contentWindowInsets = ScaffoldDefaults.contentWindowInsets
+                        .exclude(WindowInsets.statusBars),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection)
+                        .clickable {
+                            gridCells = if (gridCells == 4) 1 else gridCells + 1
+                        },
+
                     topBar = {
-                        TopAppBar(
-                            title = {  },
+                        SearchTopAppBar(
+                            scrollBehavior = scrollBehavior,
+                            onSearchText = {
+                                  searchText = it
+                            },
+                            color = Color.Transparent,
+                            navigationIconLabel = "",
+                            onNavigationIconClicked = { searching = false },
                             actions = {
-                                IconButton(onClick = ::showBottomSheet) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Menu,
-                                        contentDescription = "Options"
-                                    )
-                                }
-                                IconButton(onClick = { settingsVisible = !settingsVisible }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Settings,
-                                        contentDescription = "settings"
-                                    )
-                                }
-                            }
+                               IconButton(onClick = { bottomBarState.visible = Expanded }) {
+                                   Icon(imageVector = Icons.Filled.FilterList, null)
+                               }
+                            },
+                            searchText = searchText,
+                            showTextField = searching,
+                            onSearchChanged = {
+                                searching = it
+                            },
                         )
                     },
-                    sheetContainerColor = Color.Transparent,
-                    sheetShape = RectangleShape,
-                    sheetTonalElevation = 0.dp,
-                    sheetShadowElevation = 0.dp,
-                    sheetDragHandle = {},
-                    sheetContent = {
-
-                        val selectedList = remember {
-                            mutableStateListOf(
-                                SelectedOption.None, SelectedOption.None, SelectedOption.None, SelectedOption.None
+                    bottomBar = {
+                        Column(Modifier.fillMaxWidth()) {
+                            ExpandableBottonBarContent(
+                                bottomBarState = bottomBarState,
+                                showDisplayOptions = { displayOptionsVisible = true },
+                                filterByElement = {
+                                    elementFilter = it
+                                }
                             )
-                        }
-
-                        LazyRow(
-                            Modifier
-                                .padding(bottom = 32.dp)
-                        ) {
-                            item {
-                                androidx.compose.animation.AnimatedVisibility(
-                                    visible = selectedList.fastAny { it != SelectedOption.None },
-                                    exit = fadeOut() + slideOutHorizontally(),
-                                    enter = fadeIn() + slideInHorizontally()
+                            NavigationBar(
+                                Modifier.height(navBarHeight)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        bottomBarState.visible = when(bottomBarState.visible) {
+                                            Hidden -> PartiallyExpanded
+                                            Expanded -> Hidden
+                                            PartiallyExpanded -> Expanded
+                                        }
+                                    }
                                 ) {
-                                    AssistChip(
-                                        shape = RoundedCornerShape(50),
-                                        modifier = Modifier.height(34.dp),
-                                        onClick = { selectedList.replaceAll { SelectedOption.None } },
-                                        label = {
-                                            Icon(
-                                                imageVector = Icons.Default.Clear,
-                                                contentDescription = "Clear"
-                                            )
-                                        },
-                                        colors = AssistChipDefaults.assistChipColors(
-                                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                                        )
+                                    Icon(
+                                        imageVector = Icons.Default.Home,
+                                        contentDescription = "Home"
                                     )
                                 }
-                                Gap(padding = 4.dp)
-                            }
-                            itemsIndexed(selectedList) { i, selected ->
-                                FilterTag(
-                                    leftText = "l text $i",
-                                    rightText = "r text $i",
-                                    selectedOption = selected,
-                                    onOptionSelected = { op ->
-                                        selectedList[i] = if (op == selected) SelectedOption.None else op
-                                    },
-                                    modifier = Modifier.animateItemPlacement()
-                                )
-                                Gap(padding = 4.dp)
                             }
                         }
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.background)
-                                .padding(bottom = 32.dp)
-                        ) {
-                            IconButton(onClick = { displayOptionsVisible = !displayOptionsVisible }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Menu,
-                                    contentDescription = "Options",
-                                    tint = MaterialTheme.colorScheme.onBackground
-                                )
-                            }
-                            Text(
-                                "Display Options",
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                    }
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable {
-                                gridCells = if (gridCells == 4) 1 else gridCells + 1
-                            }
-                            .padding(it.calculateTopPadding()),
-                        color = MaterialTheme.colorScheme.background
+                    },
+                    containerColor = MaterialTheme.colorScheme.background,
+                ) { paddingValues ->
+                    Box(modifier = Modifier.padding(bottom = navBarHeight)
                     ) {
                         if (cardType == CharCardSizingType.List) {
                             LazyColumn {
-                                items(characters) { character ->
+                                item {
+                                    Spacer(modifier = Modifier.height(paddingValues.calculateTopPadding()))
+                                }
+                                items(
+                                    characters,
+                                    key = { character -> character.character.key }
+                                ) { character ->
                                     CharacterInfoCard(
                                         onClick = {},
-                                        character = character,
+                                        character = character.character,
+                                        artifacts = character.artifacts,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(90.dp),
+                                            .height(90.dp)
+                                            .animateItemPlacement(),
                                         sizing = CharCardSizingType.List
                                     )
                                     Spacer(Modifier.height(8.dp))
@@ -351,14 +320,23 @@ class MainActivity : ComponentActivity() {
                         } else {
                             LazyVerticalGrid(
                                 columns =  GridCells.Fixed(gridCells),
+                                state = rememberLazyGridState()
                             ) {
-                                items(characters) { character ->
+                                item(span = { GridItemSpan(gridCells)}) {
+                                    Spacer(modifier = Modifier.height(paddingValues.calculateTopPadding()))
+                                }
+                                items(
+                                    characters,
+                                    key = { character -> character.character.key }
+                                ) { character ->
                                     CharacterInfoCard(
                                         onClick = {},
-                                        character = character,
+                                        character = character.character,
                                         modifier = Modifier
                                             .padding(4.dp)
-                                            .fillMaxWidth(),
+                                            .fillMaxWidth()
+                                            .animateItemPlacement(),
+                                        artifacts = character.artifacts,
                                         sizing = cardType
                                     )
                                 }
@@ -371,23 +349,196 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun ExpandableBottonBarContent(
+        bottomBarState: ExpandableBottomBarState = rememberExpandableBottomBarState(),
+        showDisplayOptions: () -> Unit,
+        filterByElement: (Element?) -> Unit,
+    ) {
+        val localDensity = LocalDensity.current
+
+        val draggableState = rememberDraggableState { delta ->
+            with(localDensity) {
+                val dragDp = delta.toDp()
+                bottomBarState.onDrag(dragDp)
+            }
+        }
+
+        if (bottomBarState.visible != Hidden) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .draggable(
+                        state = draggableState,
+                        orientation = Orientation.Vertical,
+                        enabled = bottomBarState.visible != Hidden,
+                        onDragStopped = {
+                            bottomBarState.onDragStop()
+                        }
+                    )
+            ) {
+                Column(
+                    Modifier
+                        .offset(y = bottomBarState.offsetDp)
+                        .onSizeChanged {
+                            with(localDensity) {
+                                if (it.height > 0) {
+                                    bottomBarState.maxHeight = it.height.toDp()
+                                }
+                            }
+                        }
+                ) {
+                    LazyRow(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp)
+                    ) {
+                        ElementFilterRow {
+                            filterByElement(it)
+                        }
+                    }
+                    if (bottomBarState.visible == Expanded) {
+                        ExpandedBottomBarContent(bottomBarState = bottomBarState) {
+                            showDisplayOptions()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+@Composable
+fun ExpandedBottomBarContent(
+    bottomBarState: ExpandableBottomBarState,
+    showDispalyOptions: () -> Unit,
+) {
+    val localDensity = LocalDensity.current
+    val height by animateDpAsState(
+        targetValue =  100.dp,
+        animationSpec = tween(delayMillis = 10),
+        label = ""
+    )
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .height(height)
+            .onSizeChanged {
+                with(localDensity) {
+                    if (it.height >= 0) {
+                        bottomBarState.optionsHeight = it.height.toDp()
+                    }
+                }
+            }
+            .clip(
+                RoundedCornerShape(
+                    topStart = 12.dp,
+                    topEnd = 12.dp
+                )
+            )
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(6.dp)
+    ) {
+        Row(
+            Modifier
+                .clickable {
+                    showDispalyOptions()
+                }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.More,
+                contentDescription = "Group characters by...",
+                modifier = Modifier
+                    .size(20.dp)
+                    .rotate(180f)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(text = "Group characters by...")
+        }
+        Row(
+            Modifier
+                .clickable {
+                    showDispalyOptions()
+                }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Tune,
+                contentDescription = "Options",
+                modifier = Modifier
+                    .size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(text = "Display options")
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DisplayOptions(
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    gridCells: Int,
+    changeCells: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+
+    LaunchedEffect(key1 = Unit) {
+        sheetState.expand()
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        dragHandle = {},
+    ) {
+        TabRow(
+            selectedTabIndex = 1,
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(0.3f)
+        ) {
+            Tab(
+                selected = true,
+                onClick = { /*TODO*/ }
+            ) {
+                Text("Display", modifier = Modifier.padding(4.dp))
+            }
+        }
+        Column(
+            Modifier
+                .selectableGroup()
+                .padding(4.dp)
+                .systemBarsPadding()
+        ) {
+            SettingsDialogThemeChooserRow(
+                text = "List",
+                selected = gridCells == 4,
+                onClick = { changeCells(4) },
+            )
+            SettingsDialogThemeChooserRow(
+                text = "Compact Grid",
+                selected = gridCells == 3,
+                onClick = {  changeCells(3) },
+            )
+            SettingsDialogThemeChooserRow(
+                text = "Comfortable Grid",
+                selected = gridCells == 2,
+                onClick = { changeCells(2) },
+            )
+            SettingsDialogThemeChooserRow(
+                text = "Full Card",
+                selected = gridCells == 1,
+                onClick = {  changeCells(1) },
+            )
+        }
+    }
+}
+
+
 @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.S)
 fun supportsDynamicTheming() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    GenshinopTheme {
-        Greeting("Android")
-    }
-}

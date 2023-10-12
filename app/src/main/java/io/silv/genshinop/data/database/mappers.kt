@@ -19,6 +19,7 @@ fun GenshinData.Artifact.toDbArtifact(): Artifact {
         lock = lock,
         main_stat_key = mainStatKey,
         rarity = rarity.toLong(),
+        level = level.toLong(),
         substats = substats.map { ss ->
             ss.key to ss.value.toFloat()
         }

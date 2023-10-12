@@ -140,15 +140,18 @@ class DraggableBottomBarState(
 
     fun snapProgressTo(sheetValue: SheetValue) {
         scope.launch {
-            // order matters here, if the progress is not set first
+            // order matters here, if the progress is not set first when prev hidden
             // the height will not animate from the hidden state.
             // it is set to 0.dp while hidden to avoid detecting any swipe gestures.
-            progress = sheetValue
+            if (sheetValue != Hidden)
+                progress = sheetValue
             when (sheetValue) {
                 Hidden -> offset.animateTo(maxHeight)
                 Expanded -> offset.animateTo(0f)
                 PartiallyExpanded -> offset.animateTo(maxHeight - partialExpandHeight)
             }
+            if (sheetValue == Hidden)
+                progress = sheetValue
         }
     }
 }

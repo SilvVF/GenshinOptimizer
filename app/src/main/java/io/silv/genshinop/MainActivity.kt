@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import genshin.Artifact
@@ -216,14 +218,14 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                val config = LocalConfiguration.current
 
                 val bottomBarState = rememberDraggableBottomBarState(
-                    maxHeight = 120f + 60f,
-                    partialExpandHeight = 60f
+                    partialExpandFraction = 0.3f,
                 )
 
                 val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
-                val navBarHeight = 80.dp
+                val navBarHeight = (config.screenHeightDp * 0.1f).dp
 
                 Scaffold(
                     contentWindowInsets = ScaffoldDefaults.contentWindowInsets
@@ -258,12 +260,14 @@ class MainActivity : ComponentActivity() {
                                 Modifier
                                     .fillMaxWidth()
                                     .snapToPositionDraggable(
-                                        state = bottomBarState
+                                        state = bottomBarState,
+                                        fillMaxHeight = 0.2f
                                     )
                             ) {
                                 LazyRow(
                                     Modifier
-                                        .height(60.dp)
+                                        .padding(bottom = 12.dp)
+                                        .fillMaxHeight(0.3f)
                                 ) {
                                     ElementFilterRow {
 
@@ -272,13 +276,13 @@ class MainActivity : ComponentActivity() {
                                 Column(
                                     Modifier
                                         .fillMaxWidth()
+                                        .weight(1f)
                                         .clip(
                                             RoundedCornerShape(
                                                 topStart = 12.dp,
                                                 topEnd = 12.dp
                                             )
                                         )
-                                        .height(120.dp)
                                         .background(MaterialTheme.colorScheme.surface)
                                         .padding(6.dp)
                                 ) {

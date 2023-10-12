@@ -1,19 +1,12 @@
 package io.silv.genshinop
 
-import ExpandableBottomBarState
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.ChecksSdkIntAtLeast
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +17,6 @@ import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -78,8 +70,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import genshin.Artifact
@@ -93,11 +83,12 @@ import io.silv.genshinop.ui.composables.SearchTopAppBar
 import io.silv.genshinop.ui.composables.SettingsDialog
 import io.silv.genshinop.ui.composables.SettingsDialogThemeChooserRow
 import io.silv.genshinop.ui.composables.element
+import io.silv.genshinop.ui.composables.rememberDraggableBottomBarState
+import io.silv.genshinop.ui.composables.snapToPositionDraggable
 import io.silv.genshinop.ui.theme.GenshinopTheme
 import kotlinx.coroutines.flow.combine
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.android.inject
-import rememberExpandableBottomBarState
 
 data class CharacterWithArtifacts(
     val character: Character,
@@ -226,7 +217,10 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                val bottomBarState = rememberExpandableBottomBarState()
+                val bottomBarState = rememberDraggableBottomBarState(
+                    maxHeight = 120f + 60f,
+                    partialExpandHeight = 60f
+                )
 
                 val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
                 val navBarHeight = 80.dp
@@ -236,11 +230,7 @@ class MainActivity : ComponentActivity() {
                         .exclude(WindowInsets.statusBars),
                     modifier = Modifier
                         .fillMaxSize()
-                        .nestedScroll(scrollBehavior.nestedScrollConnection)
-                        .clickable {
-                            gridCells = if (gridCells == 4) 1 else gridCells + 1
-                        },
-
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
                     topBar = {
                         SearchTopAppBar(
                             scrollBehavior = scrollBehavior,
@@ -251,7 +241,7 @@ class MainActivity : ComponentActivity() {
                             navigationIconLabel = "",
                             onNavigationIconClicked = { searching = false },
                             actions = {
-                               IconButton(onClick = { bottomBarState.visible = Expanded }) {
+                               IconButton(onClick = { bottomBarState.snapProgressTo(Expanded) }) {
                                    Icon(imageVector = Icons.Filled.FilterList, null)
                                }
                             },
@@ -264,23 +254,77 @@ class MainActivity : ComponentActivity() {
                     },
                     bottomBar = {
                         Column(Modifier.fillMaxWidth()) {
-                            ExpandableBottonBarContent(
-                                bottomBarState = bottomBarState,
-                                showDisplayOptions = { displayOptionsVisible = true },
-                                filterByElement = {
-                                    elementFilter = it
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .snapToPositionDraggable(
+                                        state = bottomBarState
+                                    )
+                            ) {
+                                LazyRow(
+                                    Modifier
+                                        .height(60.dp)
+                                ) {
+                                    ElementFilterRow {
+
+                                    }
                                 }
-                            )
+                                Column(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clip(
+                                            RoundedCornerShape(
+                                                topStart = 12.dp,
+                                                topEnd = 12.dp
+                                            )
+                                        )
+                                        .height(120.dp)
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .padding(6.dp)
+                                ) {
+                                    Row(
+                                        Modifier
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.More,
+                                            contentDescription = "Group characters by...",
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .rotate(180f)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(text = "Group characters by...")
+                                    }
+                                    Row(
+                                        Modifier
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Tune,
+                                            contentDescription = "Options",
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(text = "Display options")
+                                    }
+                                }
+                            }
                             NavigationBar(
                                 Modifier.height(navBarHeight)
                             ) {
                                 IconButton(
                                     onClick = {
-                                        bottomBarState.visible = when(bottomBarState.visible) {
-                                            Hidden -> PartiallyExpanded
-                                            Expanded -> Hidden
-                                            PartiallyExpanded -> Expanded
-                                        }
+                                        bottomBarState.snapProgressTo(
+                                            when(bottomBarState.progress) {
+                                                Hidden -> PartiallyExpanded
+                                                Expanded -> Hidden
+                                                PartiallyExpanded -> Expanded
+                                            }
+                                        )
                                     }
                                 ) {
                                     Icon(
@@ -345,134 +389,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-        }
-    }
-}
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun ExpandableBottonBarContent(
-        bottomBarState: ExpandableBottomBarState = rememberExpandableBottomBarState(),
-        showDisplayOptions: () -> Unit,
-        filterByElement: (Element?) -> Unit,
-    ) {
-        val localDensity = LocalDensity.current
-
-        val draggableState = rememberDraggableState { delta ->
-            with(localDensity) {
-                val dragDp = delta.toDp()
-                bottomBarState.onDrag(dragDp)
-            }
-        }
-
-        if (bottomBarState.visible != Hidden) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .draggable(
-                        state = draggableState,
-                        orientation = Orientation.Vertical,
-                        enabled = bottomBarState.visible != Hidden,
-                        onDragStopped = {
-                            bottomBarState.onDragStop()
-                        }
-                    )
-            ) {
-                Column(
-                    Modifier
-                        .offset(y = bottomBarState.offsetDp)
-                        .onSizeChanged {
-                            with(localDensity) {
-                                if (it.height > 0) {
-                                    bottomBarState.maxHeight = it.height.toDp()
-                                }
-                            }
-                        }
-                ) {
-                    LazyRow(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp)
-                    ) {
-                        ElementFilterRow {
-                            filterByElement(it)
-                        }
-                    }
-                    if (bottomBarState.visible == Expanded) {
-                        ExpandedBottomBarContent(bottomBarState = bottomBarState) {
-                            showDisplayOptions()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-@Composable
-fun ExpandedBottomBarContent(
-    bottomBarState: ExpandableBottomBarState,
-    showDispalyOptions: () -> Unit,
-) {
-    val localDensity = LocalDensity.current
-    val height by animateDpAsState(
-        targetValue =  100.dp,
-        animationSpec = tween(delayMillis = 10),
-        label = ""
-    )
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .height(height)
-            .onSizeChanged {
-                with(localDensity) {
-                    if (it.height >= 0) {
-                        bottomBarState.optionsHeight = it.height.toDp()
-                    }
-                }
-            }
-            .clip(
-                RoundedCornerShape(
-                    topStart = 12.dp,
-                    topEnd = 12.dp
-                )
-            )
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(6.dp)
-    ) {
-        Row(
-            Modifier
-                .clickable {
-                    showDispalyOptions()
-                }
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.More,
-                contentDescription = "Group characters by...",
-                modifier = Modifier
-                    .size(20.dp)
-                    .rotate(180f)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(text = "Group characters by...")
-        }
-        Row(
-            Modifier
-                .clickable {
-                    showDispalyOptions()
-                }
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Tune,
-                contentDescription = "Options",
-                modifier = Modifier
-                    .size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(text = "Display options")
         }
     }
 }

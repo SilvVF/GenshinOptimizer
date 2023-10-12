@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.exclude
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -259,24 +260,21 @@ class MainActivity : ComponentActivity() {
                             Column(
                                 Modifier
                                     .fillMaxWidth()
-                                    .snapToPositionDraggable(
-                                        state = bottomBarState,
-                                        fillMaxHeight = 0.2f
-                                    )
+                                    .snapToPositionDraggable(state = bottomBarState)
                             ) {
                                 LazyRow(
                                     Modifier
                                         .padding(bottom = 12.dp)
-                                        .fillMaxHeight(0.3f)
+                                        .wrapContentHeight()
                                 ) {
                                     ElementFilterRow {
-
+                                        elementFilter = it
                                     }
                                 }
                                 Column(
                                     Modifier
                                         .fillMaxWidth()
-                                        .weight(1f)
+                                        .wrapContentHeight()
                                         .clip(
                                             RoundedCornerShape(
                                                 topStart = 12.dp,
@@ -303,7 +301,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                     Row(
                                         Modifier
-                                            .padding(12.dp),
+                                            .padding(12.dp)
+                                            .clickable { displayOptionsVisible = true },
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(

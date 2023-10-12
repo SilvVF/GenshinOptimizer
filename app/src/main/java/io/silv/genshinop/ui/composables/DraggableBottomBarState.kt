@@ -6,19 +6,17 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SheetValue.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.*
 import androidx.compose.runtime.setValue
@@ -51,7 +49,6 @@ fun Modifier.conditional(
 @OptIn(ExperimentalMaterial3Api::class)
 fun Modifier.snapToPositionDraggable(
     state: DraggableBottomBarState,
-    fillMaxHeight: Float
 ) = composed {
 
     val density = LocalDensity.current
@@ -83,7 +80,7 @@ fun Modifier.snapToPositionDraggable(
                height(0.dp)
             },
             ifFalse = {
-                fillMaxHeight(fillMaxHeight)
+                wrapContentHeight()
             }
         )
         .draggable(
